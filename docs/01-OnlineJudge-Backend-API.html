@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OnlineJudge 后端接口文档</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #303133; line-height: 1.6; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 28px; color: #1a1a2e; margin-bottom: 10px; border-bottom: 3px solid #409EFF; padding-bottom: 10px; }
+  .subtitle { color: #606266; margin-bottom: 40px; }
+  h2 { font-size: 22px; color: #2c3e50; margin: 40px 0 20px; padding-left: 12px; border-left: 4px solid #409EFF; background: #ecf5ff; padding: 10px 15px; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 18px; color: #34495e; margin: 25px 0 15px; }
+  .endpoint { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 20px; overflow: hidden; }
+  .endpoint-header { padding: 15px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #ebeef5; cursor: pointer; }
+  .endpoint-header:hover { background: #f5f7fa; }
+  .method { display: inline-block; padding: 4px 12px; border-radius: 4px; color: #fff; font-weight: 700; font-size: 12px; min-width: 60px; text-align: center; }
+  .method.get { background: #67c23a; }
+  .method.post { background: #409eff; }
+  .method.put { background: #e6a23c; }
+  .method.delete { background: #f56c6c; }
+  .path { font-family: "Courier New", monospace; font-size: 14px; color: #303133; flex: 1; }
+  .desc { font-size: 13px; color: #909399; }
+  .auth-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #fdf6ec; color: #e6a23c; }
+  .endpoint-body { padding: 20px; border-top: 1px solid #ebeef5; }
+  .section { margin-bottom: 18px; }
+  .section-title { font-size: 14px; color: #606266; margin-bottom: 8px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ebeef5; }
+  th { background: #fafafa; font-weight: 600; color: #606266; width: 25%; }
+  td { color: #303133; }
+  .required { color: #f56c6c; font-weight: 600; }
+  code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-family: "Courier New", monospace; font-size: 13px; color: #c7254e; }
+  pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  .tip { background: #f4f4f5; border-left: 4px solid #909399; padding: 12px 15px; margin: 15px 0; border-radius: 0 4px 4px 0; font-size: 13px; color: #606266; }
+  .tip.info { background: #ecf5ff; border-color: #409eff; color: #409eff; }
+  .tip.success { background: #f0f9eb; border-color: #67c23a; color: #67c23a; }
+  .tip.warning { background: #fdf6ec; border-color: #e6a23c; color: #e6a23c; }
+  .tip.error { background: #fef0f0; border-color: #f56c6c; color: #f56c6c; }
+  .toc { background: #fff; border-radius: 8px; padding: 20px 30px; margin-bottom: 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .toc h3 { margin-bottom: 12px; color: #2c3e50; }
+  .toc ul { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+  .toc a { color: #409eff; text-decoration: none; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+  .param-children { padding-left: 20px; }
+  .enums { color: #e6a23c; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>📚 OnlineJudge 后端接口文档</h1>
+<p class="subtitle">基于 Django REST Framework 的 OnlineJudge 判题系统 · 版本: 开发版 · 自动生成时间: 2026-10-26</p>
+
+<div class="toc">
+<h3>📑 目录索引</h3>
+<ul>
+  <li><a href="#overview">接口总览与通用规则</a></li>
+  <li><a href="#account">一、账户模块 (account)</a></li>
+  <li><a href="#announcement">二、公告模块 (announcement)</a></li>
+  <li><a href="#problem">三、题目模块 (problem)</a></li>
+  <li><a href="#contest">四、比赛模块 (contest)</a></li>
+  <li><a href="#submission">五、提交模块 (submission)</a></li>
+  <li><a href="#conf">六、系统配置模块 (conf)</a></li>
+  <li><a href="#utils">七、工具接口 (utils)</a></li>
+  <li><a href="#admin">八、管理员专属接口总览</a></li>
+</ul>
+</div>
+
+<h2 id="overview">接口总览与通用规则</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="path">基础 URL</span></div>
+<div class="endpoint-body">
+<div class="section-title">API 前缀</div>
+<p>所有公开接口以 <code>/api/</code> 开头，管理员接口以 <code>/api/admin/</code> 开头。</p>
+<div class="section-title">标准响应格式</div>
+<pre>{
+    "error": null,        // 成功时为 null；失败时为错误类型字符串
+    "data": ...           // 成功时为业务数据；失败时为错误消息
+}</pre>
+<div class="section-title">分页参数</div>
+<table>
+<tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
+<tr><td><code>limit</code></td><td>int</td><td>10</td><td>每页数量（最大250）</td></tr>
+<tr><td><code>offset</code></td><td>int</td><td>0</td><td>偏移量</td></tr>
+</table>
+<div class="section-title">认证方式</div>
+<p>使用 Django Session + CSRF Token。前端请求需携带 Cookie 中的 <code>csrftoken</code>，并在 Header 中设置 <code>X-CSRFToken</code>。</p>
+<div class="section-title">管理员角色枚举</div>
+<table>
+<tr><th>role</th><th>值</th><th>说明</th></tr>
+<tr><td>REGULAR_USER</td><td>-1</td><td>普通用户</td></tr>
+<tr><td>ADMIN</td><td>1</td><td>题目管理员</td></tr>
+<tr><td>SUPER_ADMIN</td><td>2</td><td>超级管理员</td></tr>
+</table>
+</div>
+</div>
+
+<h2 id="account">一、账户模块 (account)</h2>
+
+<h3>🔓 用户登录注册</h3>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/login/</span><span class="desc">用户登录</span></div>
+<div class="endpoint-body">
+<div class="section-title">请求体</div>
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>username</td><td>string</td><td class="required">是</td><td>用户名</td></tr>
+<tr><td>password</td><td>string</td><td class="required">是</td><td>密码</td></tr>
+<tr><td>tfa_code</td><td>string</td><td>否</td><td>二步验证码（开启了2FA时必填）</td></tr>
+</table>
+<div class="section-title">成功响应</div>
+<pre>{ "error": null, "data": "Succeeded" }</pre>
+<div class="section-title">错误码</div>
+<table>
+<tr><td><code>Invalid username or password</code></td></tr>
+<tr><td><code>tfa_required</code></td></tr>
+<tr><td><code>Your account has been disabled</code></td></tr>
+<tr><td><code>Invalid two factor verification code</code></td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/logout/</span><span class="desc">用户登出</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": null }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/register/</span><span class="desc">用户注册</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>username</td><td>string</td><td class="required">是</td><td>用户名，最大32字符</td></tr>
+<tr><td>password</td><td>string</td><td class="required">是</td><td>密码，最少6字符</td></tr>
+<tr><td>email</td><td>string</td><td class="required">是</td><td>邮箱地址</td></tr>
+<tr><td>captcha</td><td>string</td><td class="required">是</td><td>图形验证码</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/captcha/</span><span class="desc">获取图形验证码</span></div>
+<div class="endpoint-body">
+<p>返回一张图片，同时 Set-Cookie 中会写入验证码相关的 session 数据。</p>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/check_username_or_email</span><span class="desc">检查用户名或邮箱是否已存在</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>username</td><td>string</td><td>否</td><td>待检查的用户名</td></tr>
+<tr><td>email</td><td>string</td><td>否</td><td>待检查的邮箱</td></tr>
+</table>
+<pre>{
+    "error": null,
+    "data": { "username": false, "email": true }
+}</pre>
+</div>
+</div>
+
+<h3>👤 用户资料</h3>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/profile/</span><span class="desc">获取用户信息</span></div>
+<div class="endpoint-body">
+<p>Query 参数: <code>username</code> (可选) — 指定用户名获取他人资料；不传则返回当前登录用户资料。</p>
+<pre>{
+    "id": 1,
+    "username": "admin",
+    "admin_type": 2,
+    "avatar": "/public/avatar/xxx.png",
+    "real_name": "张三",
+    "blog": "https://...",
+    "github": "https://...",
+    "school": "青岛大学",
+    "major": "计算机",
+    "language": "C++",
+    "submission_number": 100,
+    "accepted_number": 50,
+    "total_score": 0
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method put">PUT</span><span class="path">/api/profile/</span><span class="desc">更新用户资料</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>real_name</td><td>string</td><td>否</td><td>真实姓名</td></tr>
+<tr><td>avatar</td><td>string</td><td>否</td><td>头像URL</td></tr>
+<tr><td>blog</td><td>string</td><td>否</td><td>博客URL</td></tr>
+<tr><td>github</td><td>string</td><td>否</td><td>GitHub URL</td></tr>
+<tr><td>school</td><td>string</td><td>否</td><td>学校</td></tr>
+<tr><td>major</td><td>string</td><td>否</td><td>专业</td></tr>
+<tr><td>language</td><td>string</td><td>否</td><td>偏好语言</td></tr>
+<tr><td>mood</td><td>string</td><td>否</td><td>个性签名</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/upload_avatar/</span><span class="desc">上传头像</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<p>Content-Type: <code>multipart/form-data</code>，字段 <code>image</code>。限制 2MB，支持格式: gif/jpg/jpeg/bmp/png。</p>
+</div>
+</div>
+
+<h3>🔐 密码管理</h3>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/change_password/</span><span class="desc">修改密码</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>old_password</td><td>string</td><td class="required">是</td><td>旧密码</td></tr>
+<tr><td>new_password</td><td>string</td><td class="required">是</td><td>新密码 (≥6位)</td></tr>
+<tr><td>tfa_code</td><td>string</td><td>否</td><td>2FA验证码</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/apply_reset_password/</span><span class="desc">申请重置密码（发邮件）</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>email</td><td>string</td><td class="required">是</td><td>注册邮箱</td></tr>
+<tr><td>captcha</td><td>string</td><td class="required">是</td><td>图形验证码</td></tr>
+</table>
+<p>同一邮箱 20 分钟内只能申请一次。</p>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/reset_password/</span><span class="desc">确认重置密码</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>token</td><td>string</td><td class="required">是</td><td>邮件中的重置token</td></tr>
+<tr><td>password</td><td>string</td><td class="required">是</td><td>新密码</td></tr>
+<tr><td>captcha</td><td>string</td><td class="required">是</td><td>图形验证码</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/change_email/</span><span class="desc">修改邮箱</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>password</td><td>string</td><td class="required">是</td><td>当前密码</td></tr>
+<tr><td>new_email</td><td>string</td><td class="required">是</td><td>新邮箱</td></tr>
+<tr><td>tfa_code</td><td>string</td><td>否</td><td>2FA验证码</td></tr>
+</table>
+</div>
+</div>
+
+<h3>🛡️ 二步验证 (2FA)</h3>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/two_factor_auth/</span><span class="desc">获取2FA二维码</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": "<base64 encoded QR image>" }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/two_factor_auth/</span><span class="desc">开启2FA</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>code</td><td>integer</td><td class="required">是</td><td>TOTP验证码</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method put">PUT</span><span class="path">/api/two_factor_auth/</span><span class="desc">关闭2FA</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>code</td><td>integer</td><td class="required">是</td><td>TOTP验证码</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/tfa_required/</span><span class="desc">检查某用户是否开启2FA</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": { "result": true } }</pre>
+</div>
+</div>
+
+<h3>📊 排行榜与会话</h3>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/user_rank/</span><span class="desc">用户排行榜</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>rule</td><td>string</td><td><code>acm</code>(默认) 或 <code>oi</code></td></tr>
+</table>
+<pre>{
+    "error": null,
+    "data": {
+        "results": [...],
+        "total": 100
+    }
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/sessions/</span><span class="desc">会话列表</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<pre>[
+    {
+        "current_session": true,
+        "ip": "192.168.1.1",
+        "user_agent": "Mozilla/5.0 ...",
+        "last_activity": "2026-10-26 10:00:00",
+        "session_key": "abc123..."
+    }
+]</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method delete">DELETE</span><span class="path">/api/sessions/</span><span class="desc">删除指定会话</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<p>Query: <code>session_key</code></p>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/open_api_appkey/</span><span class="desc">生成 OpenAPI AppKey</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": { "appkey": "xxxxxxxxxxxxxxxx..." } }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/sso</span><span class="desc">获取SSO Token</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": { "token": "..." } }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/sso</span><span class="desc">用 SSO Token 换用户信息</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>token</td><td>string</td><td class="required">是</td><td>SSO Token</td></tr>
+</table>
+<pre>{
+    "error": null,
+    "data": { "username": "admin", "avatar": "...", "admin_type": 2 }
+}</pre>
+</div>
+</div>
+
+<!-- ========== 公告模块 ========== -->
+<h2 id="announcement">二、公告模块 (announcement)</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/announcement/</span><span class="desc">公开公告列表</span></div>
+<div class="endpoint-body">
+<p>分页返回所有可见公告。</p>
+<pre>{
+    "results": [
+        {
+            "id": 1,
+            "title": "系统升级通知",
+            "content": "...",
+            "visible": true,
+            "create_time": "2026-10-25 10:00:00",
+            "created_by": { "username": "admin" }
+        }
+    ],
+    "total": 5
+}</pre>
+</div>
+</div>
+
+<!-- ========== 题目模块 ========== -->
+<h2 id="problem">三、题目模块 (problem)</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/problem/tags/</span><span class="desc">题目标签列表</span></div>
+<div class="endpoint-body">
+<p>Query: <code>keyword</code> (可选)</p>
+<pre>[
+    { "id": 1, "name": "DP", "problem_count": 5 },
+    { "id": 2, "name": "图论", "problem_count": 10 }
+]</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/problem/</span><span class="desc">题目列表 / 题目详情</span></div>
+<div class="endpoint-body">
+<div class="section-title">作为列表（无 problem_id 时）</div>
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>limit</td><td>int</td><td class="required">是</td></tr>
+<tr><td>offset</td><td>int</td><td>偏移量</td></tr>
+<tr><td>tag</td><td>string</td><td>按标签筛选</td></tr>
+<tr><td>keyword</td><td>string</td><td>标题/ID 关键词</td></tr>
+<tr><td>difficulty</td><td>string</td><td>难度等级</td></tr>
+</table>
+<div class="section-title">作为详情（有 problem_id 时）</div>
+<p>Query: <code>problem_id</code> — 题目的 Display ID（字符串）</p>
+<pre>{
+    "id": 1,
+    "_id": "1001",
+    "title": "A+B Problem",
+    "description": "....",
+    "input_description": "...",
+    "output_description": "...",
+    "time_limit": 1000,
+    "memory_limit": 256,
+    "rule_type": "ACM",
+    "difficulty": "Mid",
+    "tags": ["入门"],
+    "samples": [{"input": "1 2", "output": "3"}],
+    "languages": ["C++", "Python3"],
+    "template": { "C++": "#include <iostream>..." },
+    "my_status": "ac"
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/pickone/</span><span class="desc">随机抽取一道公开题目</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": "1001" }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contest/problem/</span><span class="desc">比赛题目列表 / 详情</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>contest_id</td><td>int</td><td>比赛ID（列表时需要）</td></tr>
+<tr><td>problem_id</td><td>string</td><td>题目 Display ID（详情时）</td></tr>
+</table>
+<p class="tip info">比赛未开始或封榜后，普通用户只能获取安全信息（不含样例、描述等）。</p>
+</div>
+</div>
+
+<!-- ========== 比赛模块 ========== -->
+<h2 id="contest">四、比赛模块 (contest)</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contests/</span><span class="desc">比赛列表</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>keyword</td><td>string</td><td>标题关键词</td></tr>
+<tr><td>rule_type</td><td>string</td><td><code>acm</code> 或 <code>oi</code></td></tr>
+<tr><td>status</td><td>string</td><td><code>not_start</code> / <code>underway</code> / <code>ended</code></td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contest/</span><span class="desc">比赛详情</span></div>
+<div class="endpoint-body">
+<p>Query: <code>id</code> (int)</p>
+<pre>{
+    "id": 1,
+    "title": "CCPC 2026",
+    "description": "...",
+    "start_time": "2026-11-01 09:00:00",
+    "end_time": "2026-11-01 14:00:00",
+    "rule_type": "ACM",
+    "contest_type": "Public",
+    "status": "Not Started",
+    "now": "2026-10-26 16:00:00"
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/contest/password/</span><span class="desc">密码验证</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>contest_id</td><td>int</td><td class="required">是</td><td>比赛ID</td></tr>
+<tr><td>password</td><td>string</td><td class="required">是</td><td>比赛密码</td></tr>
+</table>
+<pre>{ "error": null, "data": true }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contest/access/</span><span class="desc">检查当前用户是否可进入比赛</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": { "access": true } }</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contest/announcement/</span><span class="desc">比赛公告列表</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>contest_id</td><td>int</td><td class="required">是</td></tr>
+<tr><td>max_id</td><td>int</td><td>增量拉取用</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contest_rank/</span><span class="desc">比赛排行榜</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>contest_id</td><td>int</td><td class="required">是（通过查询string self.contest获取）</td></tr>
+<tr><td>download_csv</td><td>string</td><td>值为"1"时返回xlsx文件</td></tr>
+<tr><td>force_refresh</td><td>string</td><td>管理员可用，强制刷新缓存</td></tr>
+</table>
+<p class="tip warning">排行榜有缓存。ACM 规则返回 accepted_number、total_time 等；OI 规则返回 total_score。</p>
+</div>
+</div>
+
+<!-- ========== 提交模块 ========== -->
+<h2 id="submission">五、提交模块 (submission)</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/submission/</span><span class="desc">提交代码</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>problem_id</td><td>int</td><td class="required">是</td><td>题目数据库ID</td></tr>
+<tr><td>language</td><td>string</td><td class="required">是</td><td>语言名称（如 C++、Python3）</td></tr>
+<tr><td>code</td><td>string</td><td class="required">是</td><td>源代码 (≤1MB)</td></tr>
+<tr><td>contest_id</td><td>int</td><td>否</td><td>比赛ID（比赛中提交）</td></tr>
+<tr><td>captcha</td><td>string</td><td>否</td><td>图形验证码</td></tr>
+</table>
+<pre>{ "error": null, "data": { "submission_id": 12345 } }</pre>
+<p class="tip warning">提交限流采用令牌桶策略，用户默认 5 秒一次。</p>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/submission/</span><span class="desc">提交详情</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<p>Query: <code>id</code> (int)</p>
+<pre>{
+    "id": 12345,
+    "user_id": 1,
+    "username": "admin",
+    "problem": 1,
+    "language": "C++",
+    "code": "#include...",
+    "result": 0,
+    "statistic_info": {
+        "0": {"cpu_time": 10, "memory": 262144, "result": 0}
+    },
+    "create_time": "2026-10-26 10:00:00",
+    "shared": false
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method put">PUT</span><span class="path">/api/submission/</span><span class="desc">分享/取消分享提交</span><span class="auth-badge">需登录</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>id</td><td>string</td><td class="required">是</td><td>提交ID</td></tr>
+<tr><td>shared</td><td>bool</td><td class="required">是</td><td>是否公开</td></tr>
+</table>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/submissions/</span><span class="desc">提交列表</span></div>
+<div class="endpoint-body">
+<table>
+<tr><th>参数</th><th>类型</th><th>说明</th></tr>
+<tr><td>limit</td><td>int</td><td class="required">是</td></tr>
+<tr><td>offset</td><td>int</td><td>偏移量</td></tr>
+<tr><td>problem_id</td><td>string</td><td>题目 Display ID</td></tr>
+<tr><td>myself</td><td>string</td><td>"1" 只看自己</td></tr>
+<tr><td>result</td><td>int</td><td>按结果筛选</td></tr>
+<tr><td>username</td><td>string</td><td>按用户名筛选</td></tr>
+</table>
+<p class="tip error">此接口不接受 contest_id，比赛提交请用 contest_submissions。</p>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/contest_submissions/</span><span class="desc">比赛提交列表</span></div>
+<div class="endpoint-body">
+<p>参数 submissions 类似，另自动关联当前比赛。</p>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/submission_exists/</span><span class="desc">判断当前用户是否对某题有提交</span></div>
+<div class="endpoint-body">
+<pre>{ "error": null, "data": true }</pre>
+</div>
+</div>
+
+<!-- ========== 配置模块 ========== -->
+<h2 id="conf">六、系统配置模块 (conf)</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/website/</span><span class="desc">获取网站公开配置</span></div>
+<div class="endpoint-body">
+<pre>{
+    "website_base_url": "http://localhost",
+    "website_name": "OnlineJudge",
+    "website_name_shortcut": "OJ",
+    "website_footer": "© 2026",
+    "allow_register": true,
+    "submission_list_show_all": false
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method get">GET</span><span class="path">/api/languages/</span><span class="desc">获取支持的语言列表</span></div>
+<div class="endpoint-body">
+<pre>{
+    "languages": [{"name": "C++", "description": "..."}, ...],
+    "spj_languages": [{"name": "C++", "description": "..."}]
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/judge_server_heartbeat/</span><span class="desc">判题服务器心跳上报（内部接口）</span></div>
+<div class="endpoint-body">
+<p class="tip warning">需要 Header: <code>X-JUDGE-SERVER-TOKEN</code>（SHA256 哈希）。CSRF 豁免。</p>
+<table>
+<tr><th>字段</th><th>类型</th><th>说明</th></tr>
+<tr><td>action</td><td>string</td><td>"heartbeat"</td></tr>
+<tr><td>hostname</td><td>string</td><td>主机名</td></tr>
+<tr><td>judger_version</td><td>string</td><td>Judger 版本</td></tr>
+<tr><td>cpu_core</td><td>int</td><td>CPU 核数</td></tr>
+<tr><td>cpu</td><td>float</td><td>CPU 使用率 %</td></tr>
+<tr><td>memory</td><td>float</td><td>内存使用率 %</td></tr>
+<tr><td>service_url</td><td>string</td><td>服务URL</td></tr>
+</table>
+</div>
+</div>
+
+<!-- ========== 工具接口 ========== -->
+<h2 id="utils">七、工具接口 (utils)</h2>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/upload_image/</span><span class="desc">Simditor 图片上传</span></div>
+<div class="endpoint-body">
+<p>CSRF 豁免。multipart/form-data 字段 <code>image</code>。</p>
+<pre>{
+    "success": true,
+    "msg": "Success",
+    "file_path": "/public/upload/xxx.png"
+}</pre>
+</div>
+</div>
+
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/api/upload_file/</span><span class="desc">Simditor 文件上传</span></div>
+<div class="endpoint-body">
+<p>CSRF 豁免。multipart/form-data 字段 <code>file</code>。</p>
+</div>
+</div>
+
+<!-- ========== 管理员接口总览 ========== -->
+<h2 id="admin">八、管理员专属接口总览 (/api/admin/*)</h2>
+
+<div class="tip error">以下所有接口需要 <code>super_admin_required</code> 或 <code>problem_permission_required</code> 装饰器保护，仅限管理员角色访问。</div>
+
+<h3>👥 用户管理</h3>
+<table>
+<tr><th>方法</th><th>路径</th><th>说明</th></tr>
+<tr><td>GET</td><td>/api/admin/user/</td><td>用户列表（支持 keyword 搜索、id 查询、分页）</td></tr>
+<tr><td>POST</td><td>/api/admin/user/</td><td>批量导入用户 <code>users: [[username, password, email, real_name], ...]</code></td></tr>
+<tr><td>PUT</td><td>/api/admin/user/</td><td>编辑用户（含 admin_type、problem_permission、open_api、2FA、禁用等）</td></tr>
+<tr><td>DELETE</td><td>/api/admin/user/</td><td>批量删除用户 <code>?id=1,2,3</code></td></tr>
+<tr><td>GET</td><td>/api/admin/generate_user/</td><td>下载批量生成用户的 Excel <code>?file_id=xxx</code></td></tr>
+<tr><td>POST</td><td>/api/admin/generate_user/</td><td>批量生成账号（prefix + number_from..number_to + suffix）</td></tr>
+</table>
+
+<h3>📢 公告管理</h3>
+<table>
+<tr><th>方法</th><th>路径</th><th>说明</th></tr>
+<tr><td>GET</td><td>/api/admin/announcement/</td><td>公告列表/详情</td></tr>
+<tr><td>POST</td><td>/api/admin/announcement/</td><td>创建公告 (title, content, visible)</td></tr>
+<tr><td>PUT</td><td>/api/admin/announcement/</td><td>编辑公告</td></tr>
+<tr><td>DELETE</td><td>/api/admin/announcement/</td><td>删除公告</td></tr>
+</table>
+
+<h3>📝 题目管理</h3>
+<table>
+<tr><th>方法</th><th>路径</th><th>说明</th></tr>
+<tr><td>GET</td><td>/api/admin/problem/</td><td>题目列表/详情</td></tr>
+<tr><td>POST</td><td>/api/admin/problem/</td><td>创建题目</td></tr>
+<tr><td>PUT</td><td>/api/admin/problem/</td><td>编辑题目</td></tr>
+<tr><td>DELETE</td><td>/api/admin/problem/</td><td>删除题目</td></tr>
+<tr><td>GET</td><td>/api/admin/test_case/</td><td>下载测试用例 zip</td></tr>
+<tr><td>POST</td><td>/api/admin/test_case/</td><td>上传测试用例 zip</td></tr>
+<tr><td>POST</td><td>/api/admin/compile_spj/</td><td>编译 Special Judge (spj_language, spj_code)</td></tr>
+<tr><td>GET</td><td>/api/admin/export_problem/</td><td>导出题目 (problem_id 数组)</td></tr>
+<tr><td>POST</td><td>/api/admin/import_problem/</td><td>导入题目 zip</td></tr>
+<tr><td>POST</td><td>/api/admin/import_fps/</td><td>FPS 格式题目导入</td></tr>
+</table>
+
+<h3>🏆 比赛管理</h3>
+<table>
+<tr><th>方法</th><th>路径</th><th>说明</th></tr>
+<tr><td>GET/POST/PUT</td><td>/api/admin/contest/</td><td>比赛 CRUD</td></tr>
+<tr><td>GET/POST/PUT/DELETE</td><td>/api/admin/contest/announcement/</td><td>比赛公告 CRUD</td></tr>
+<tr><td>GET</td><td>/api/admin/contest/acm_helper/</td><td>ACM 比赛协助（获取所有 AC 信息）</td></tr>
+<tr><td>PUT</td><td>/api/admin/contest/acm_helper/</td><td>标记/取消标记某题 checked 状态</td></tr>
+<tr><td>GET</td><td>/api/admin/download_submissions/</td><td>下载比赛所有 AC 提交代码 zip</td></tr>
+</table>
+
+<h3>⚙️ 系统设置</h3>
+<table>
+<tr><th>方法</th><th>路径</th><th>说明</th></tr>
+<tr><td>GET</td><td>/api/admin/website/</td><td>获取网站配置</td></tr>
+<tr><td>POST</td><td>/api/admin/website/</td><td>更新网站配置</td></tr>
+<tr><td>GET</td><td>/api/admin/smtp/</td><td>SMTP 配置</td></tr>
+<tr><td>POST/PUT</td><td>/api/admin/smtp/</td><td>创建/编辑 SMTP 配置</td></tr>
+<tr><td>POST</td><td>/api/admin/smtp_test/</td><td>测试 SMTP 发信</td></tr>
+<tr><td>GET</td><td>/api/admin/judge_server/</td><td>判题服务器列表（含 token）</td></tr>
+<tr><td>PUT</td><td>/api/admin/judge_server/</td><td>启用/禁用某判题服务器</td></tr>
+<tr><td>DELETE</td><td>/api/admin/judge_server/</td><td>删除判题服务器</td></tr>
+<tr><td>GET/DELETE</td><td>/api/admin/prune_test_case/</td><td>孤儿测试用例清理</td></tr>
+<tr><td>GET</td><td>/api/admin/versions/</td><td>获取 GitHub Release Notes</td></tr>
+<tr><td>GET</td><td>/api/admin/dashboard_info</td><td>仪表盘统计数据</td></tr>
+<tr><td>GET</td><td>/api/admin/submission/rejudge?</td><td>重新判题（仅非比赛提交）</td></tr>
+</table>
+
+</div>
+</body>
+</html>

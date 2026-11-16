@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judger C 核心接口文档</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #303133; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 28px; color: #1a1a2e; margin-bottom: 10px; border-bottom: 3px solid #F56C6C; padding-bottom: 10px; }
+  .subtitle { color: #606266; margin-bottom: 40px; }
+  h2 { font-size: 22px; color: #2c3e50; margin: 40px 0 20px; padding: 10px 15px; background: #fef0f0; border-left: 4px solid #F56C6C; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 18px; color: #34495e; margin: 25px 0 15px; }
+  h4 { font-size: 15px; color: #555; margin: 18px 0 10px; }
+  .file-card { background: #fff; border-radius: 8px; padding: 20px 25px; margin-bottom: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .code-block { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 6px; font-family: "Courier New", monospace; font-size: 13px; margin: 10px 0; overflow-x: auto; white-space: pre; }
+  code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-family: "Courier New", monospace; color: #c7254e; font-size: 13px; }
+  .tip { background: #f4f4f5; border-left: 4px solid #909399; padding: 12px 15px; margin: 15px 0; border-radius: 0 4px 4px 0; font-size: 13px; color: #606266; }
+  .tip.info { background: #ecf5ff; border-color: #409eff; color: #409eff; }
+  .tip.warning { background: #fdf6ec; border-color: #e6a23c; color: #e6a23c; }
+  .tip.error { background: #fef0f0; border-color: #f56c6c; color: #f56c6c; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ebeef5; }
+  th { background: #fafafa; font-weight: 600; color: #606266; width: 28%; }
+  .file-tree { font-family: "Courier New", monospace; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .info-item { background: #fff; padding: 15px; border-radius: 6px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .info-item strong { display: block; font-size: 18px; color: #F56C6C; }
+  .info-item span { color: #909399; font-size: 13px; }
+  .func-signature { background: #1e1e2e; color: #a6e3a1; padding: 12px 18px; border-radius: 6px; font-family: "Courier New", monospace; font-size: 14px; border-left: 4px solid #F56C6C; margin: 10px 0; }
+  .enum-yes { color: #67c23a; }
+  .macro { color: #E6A23C; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🔨 Judger C 核心接口文档</h1>
+<p class="subtitle">C 语言编写的 Linux 沙箱判题引擎 · 以动态库/命令行两种形式暴露接口 · 自动生成时间: 2026-10-26</p>
+
+<div class="info-grid">
+  <div class="info-item"><strong>C99</strong><span>语言标准</span></div>
+  <div class="info-item"><strong>libjudger.so</strong><span>动态库形式</span></div>
+  <div class="info-item"><strong>libseccomp</strong><span>系统调用过滤</span></div>
+  <div class="info-item"><strong>2.1.1</strong><span>版本号</span></div>
+</div>
+
+<h2>📦 项目结构</h2>
+<div class="file-card">
+<pre class="file-tree">Judger/
+├── src/
+│   ├── runner.h / runner.c     ← 核心 run() 函数 + 结构体定义
+│   ├── child.h / child.c       ← 子进程执行逻辑 child_process()
+│   ├── killer.h / killer.c     ← 超时杀进程 killer / timeout_killer
+│   ├── logger.h / logger.c     ← 文件日志
+│   ├── main.c                  ← 命令行入口 (argtable3)
+│   └── argtable3.c/h           ← 命令行参数解析库（第三方）
+├── CMakeLists.txt              ← 构建脚本
+└── tests/                      ← Docker 测试环境</pre>
+</div>
+
+<h2>🔧 两种调用方式</h2>
+<div class="file-card">
+<table>
+<tr><th>方式</th><th>说明</th><th>调用者</th></tr>
+<tr><td>动态库 <code>libjudger.so</code></td><td>Python <code>_judger</code> C 扩展直接 <code>dlopen</code></td><td>JudgeServer (judge_client.py)</td></tr>
+<tr><td>命令行 <code>judger</code></td><td>main.c 解析 CLI 参数，输出 JSON 到 stdout</td><td>测试/调试用</td></tr>
+</table>
+</div>
+
+<h2>📐 数据结构</h2>
+
+<h3><code>struct config</code> — 运行配置</h3>
+<div class="file-card">
+<div class="func-signature">struct config { ... };</div>
+<table>
+<tr><th>字段</th><th>类型</th><th>说明</th></tr>
+<tr><td>max_cpu_time</td><td>int</td><td>CPU 时间限制 (ms)，<code>-1</code>=UNLIMITED</td></tr>
+<tr><td>max_real_time</td><td>int</td><td>墙钟时间限制 (ms)，<code>-1</code>=UNLIMITED</td></tr>
+<tr><td>max_memory</td><td>long</td><td>内存限制 (byte)，<code>-1</code>=UNLIMITED</td></tr>
+<tr><td>max_stack</td><td>long</td><td>栈大小限制 (byte)，默认 16MB</td></tr>
+<tr><td>max_process_number</td><td>int</td><td>最大进程数，<code>-1</code>=UNLIMITED</td></tr>
+<tr><td>max_output_size</td><td>long</td><td>最大输出大小 (byte)，<code>-1</code>=UNLIMITED</td></tr>
+<tr><td>memory_limit_check_only</td><td>int</td><td>1=仅检查不设 rlimit（容器环境），默认 0</td></tr>
+<tr><td>exe_path</td><td>char*</td><td class="enum-yes">✅ 必填 — 可执行文件路径</td></tr>
+<tr><td>input_path</td><td>char*</td><td>输入路径，默认 "/dev/stdin"</td></tr>
+<tr><td>output_path</td><td>char*</td><td>输出路径，默认 "/dev/stdout"</td></tr>
+<tr><td>error_path</td><td>char*</td><td>stderr 路径，默认 "/dev/stderr"</td></tr>
+<tr><td>args[256]</td><td>char**</td><td>命令行参数（args[0] 自动设为 exe_path）</td></tr>
+<tr><td>env[256]</td><td>char**</td><td>环境变量数组，以 NULL 结尾</td></tr>
+<tr><td>log_path</td><td>char*</td><td>日志文件路径，默认 "judger.log"</td></tr>
+<tr><td>seccomp_rule_name</td><td>char*</td><td>seccomp 规则名，NULL 表示不启用</td></tr>
+<tr><td>uid</td><td>uid_t</td><td>运行 UID，默认 65534 (nobody)</td></tr>
+<tr><td>gid</td><td>gid_t</td><td>运行 GID，默认 65534</td></tr>
+</table>
+</div>
+
+<h3><code>struct result</code> — 运行结果</h3>
+<div class="file-card">
+<div class="func-signature">struct result { cpu_time, real_time, memory, signal, exit_code, error, result };</div>
+<table>
+<tr><th>字段</th><th>类型</th><th>说明</th></tr>
+<tr><td>cpu_time</td><td>int</td><td>用户态 + 内核态 CPU 时间 (ms)</td></tr>
+<tr><td>real_time</td><td>int</td><td>墙钟时间 (ms)</td></tr>
+<tr><td>memory</td><td>long</td><td>峰值内存 (byte)，通过 rusage.ru_maxrss 获取</td></tr>
+<tr><td>signal</td><td>int</td><td>终止信号 (如 SIGSEGV=11, SIGKILL=9)</td></tr>
+<tr><td>exit_code</td><td>int</td><td>进程退出码</td></tr>
+<tr><td>error</td><td>int</td><td>内部错误码（0=SUCCESS，负数见枚举）</td></tr>
+<tr><td>result</td><td>int</td><td>判题结果（见结果枚举）</td></tr>
+</table>
+</div>
+
+<h3>错误码枚举 (config.error)</h3>
+<div class="file-card">
+<table>
+<tr><th>值</th><th>常量</th><th>说明</th></tr>
+<tr><td>0</td><td class="macro">SUCCESS</td><td>一切正常</td></tr>
+<tr><td>-1</td><td class="macro">INVALID_CONFIG</td><td>配置无效</td></tr>
+<tr><td>-2</td><td class="macro">FORK_FAILED</td><td>fork() 失败</td></tr>
+<tr><td>-3</td><td class="macro">PTHREAD_FAILED</td><td>pthread_create() 失败</td></tr>
+<tr><td>-4</td><td class="macro">WAIT_FAILED</td><td>waitpid() 失败</td></tr>
+<tr><td>-5</td><td class="macro">ROOT_REQUIRED</td><td>需 root 权限运行</td></tr>
+<tr><td>-6</td><td class="macro">LOAD_SECCOMP_FAILED</td><td>seccomp 规则加载失败</td></tr>
+<tr><td>-7</td><td class="macro">SETRLIMIT_FAILED</td><td>setrlimit() 失败</td></tr>
+<tr><td>-8</td><td class="macro">DUP2_FAILED</td><td>dup2() 文件重定向失败</td></tr>
+<tr><td>-9</td><td class="macro">SETUID_FAILED</td><td>setuid/setgid 失败</td></tr>
+<tr><td>-10</td><td class="macro">EXECVE_FAILED</td><td>execve() 执行失败</td></tr>
+<tr><td>-11</td><td class="macro">SPJ_ERROR</td><td>Special Judge 运行错误</td></tr>
+</table>
+</div>
+
+<h3>结果枚举 (result.result)</h3>
+<div class="file-card">
+<table>
+<tr><th>值</th><th>常量</th><th>说明</th></tr>
+<tr><td>-1</td><td class="macro">WRONG_ANSWER</td><td>WA</td></tr>
+<tr><td>0</td><td class="macro">= 0</td><td>正常退出（具体 AC/WA 由上层判断）</td></tr>
+<tr><td>1</td><td class="macro">CPU_TIME_LIMIT_EXCEEDED</td><td>TLE - CPU 超限</td></tr>
+<tr><td>2</td><td class="macro">REAL_TIME_LIMIT_EXCEEDED</td><td>超时 - 墙钟时间</td></tr>
+<tr><td>3</td><td class="macro">MEMORY_LIMIT_EXCEEDED</td><td>MLE - 内存超限</td></tr>
+<tr><td>4</td><td class="macro">RUNTIME_ERROR</td><td>RE - 运行时错误</td></tr>
+<tr><td>5</td><td class="macro">SYSTEM_ERROR</td><td>SE - 系统错误</td></tr>
+</table>
+</div>
+
+<h2>🧠 核心函数 API</h2>
+
+<div class="file-card">
+<h3>1. <code>run()</code> — 主入口</h3>
+<div class="func-signature">void run(struct config * _config, struct result * _result);</div>
+<p>主函数。创建子进程执行用户程序，监控时间/内存，写入 <code>_result</code>。</p>
+
+<h4>内部执行流程</h4>
+<pre class="code-block">run():
+    1. 初始化 struct result (全零)
+    2. 打开 log 文件
+    3. 创建 killer 线程 (监控 max_real_time → SIGKILL)
+    4. fork() 创建子进程
+       → 子进程: child_process(log_fp, _config)
+       → 父进程: waitpid() + 收集 rusage
+    5. pthread_join(killer_thread)
+    6. 根据 rusage / signal / exit_code 判定 result
+    7. 写入 _result 各字段</pre>
+</div>
+
+<div class="file-card">
+<h3>2. <code>child_process()</code> — 子进程执行体</h3>
+<div class="func-signature">void child_process(FILE *log_fp, struct config *_config);</div>
+<p>在 fork() 后的子进程中执行，负责：</p>
+<pre class="code-block">child_process():
+    1. 打开 input/output/error 文件
+    2. setrlimit() 设置 max_cpu_time, max_memory, max_stack, max_output_size, max_process_number
+    3. seccomp_load() 加载 seccomp 规则（若指定）
+    4. dup2() 重定向 stdin/stdout/stderr
+    5. setgid() + setuid() 降权运行
+    6. execve(exe_path, args, env)</pre>
+<p>任何失败调用 <code>CHILD_ERROR_EXIT</code> 宏 → <code>raise(SIGUSR1)</code> + exit(EXIT_FAILURE)</p>
+</div>
+
+<div class="file-card">
+<h3>3. <code>timeout_killer()</code> — 超时杀进程线程</h3>
+<div class="func-signature">void *timeout_killer(void *timeout_killer_args);</div>
+<p>pthread 线程函数。睡眠 <code>timeout</code> 毫秒后对指定 pid 发送 SIGKILL。</p>
+</div>
+
+<div class="file-card">
+<h3>4. <code>kill_pid()</code> — 杀进程</h3>
+<div class="func-signature">int kill_pid(pid_t pid);</div>
+<p>向目标 pid 发送 SIGKILL。返回 0 成功，-1 失败。</p>
+</div>
+
+<h2>💻 命令行接口 (main.c)</h2>
+
+<div class="file-card">
+<h4>基本用法</h4>
+<pre class="code-block">libjudger.so --exe_path /path/to/exe \
+    --max_cpu_time 1000 \
+    --max_real_time 3000 \
+    --max_memory 262144 \
+    --input_path /tmp/1.in \
+    --output_path /tmp/1.out \
+    --seccomp_rule_name general \
+    --uid 10000 --gid 10000</pre>
+
+<h4>完整参数列表</h4>
+<table>
+<tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
+<tr><td class="macro">--exe_path</td><td>str</td><td class="enum-yes">必填</td><td>可执行文件路径</td></tr>
+<tr><td>--max_cpu_time</td><td>int</td><td>-1 (无限)</td><td>CPU 时间 (ms)</td></tr>
+<tr><td>--max_real_time</td><td>int</td><td>-1 (无限)</td><td>墙钟时间 (ms)</td></tr>
+<tr><td>--max_memory</td><td>int</td><td>-1 (无限)</td><td>内存 (byte)</td></tr>
+<tr><td>--max_stack</td><td>int</td><td>16MB</td><td>栈 (byte)</td></tr>
+<tr><td>--max_process_number</td><td>int</td><td>-1 (无限)</td><td>进程数</td></tr>
+<tr><td>--max_output_size</td><td>int</td><td>-1 (无限)</td><td>输出 (byte)</td></tr>
+<tr><td>--memory_limit_check_only</td><td>int</td><td>0</td><td>1=只检查</td></tr>
+<tr><td>--input_path</td><td>str</td><td>/dev/stdin</td><td>输入文件</td></tr>
+<tr><td>--output_path</td><td>str</td><td>/dev/stdout</td><td>输出文件</td></tr>
+<tr><td>--error_path</td><td>str</td><td>/dev/stderr</td><td>stderr</td></tr>
+<tr><td>--args</td><td>str[]</td><td>无</td><td>命令行参数（可重复最多 255 个）</td></tr>
+<tr><td>--env</td><td>str[]</td><td>无</td><td>环境变量（最多 255 个）</td></tr>
+<tr><td>--log_path</td><td>str</td><td>judger.log</td><td>日志路径</td></tr>
+<tr><td>--seccomp_rule_name</td><td>str</td><td>NULL</td><td>seccomp 规则名</td></tr>
+<tr><td>--uid</td><td>int</td><td>65534</td><td>运行 UID</td></tr>
+<tr><td>--gid</td><td>int</td><td>65534</td><td>运行 GID</td></tr>
+<tr><td>--help</td><td>flag</td><td>—</td><td>帮助</td></tr>
+<tr><td>--version</td><td>flag</td><td>—</td><td>版本</td></tr>
+</table>
+
+<h4>stdout 输出格式 (JSON)</h4>
+<pre class="code-block">{
+    "cpu_time": 10,
+    "real_time": 15,
+    "memory": 262144,
+    "signal": 0,
+    "exit_code": 0,
+    "error": 0,
+    "result": 0
+}</pre>
+</div>
+
+<h2>🧱 关键构建信息</h2>
+
+<div class="file-card">
+<h4>版本号宏</h4>
+<pre class="code-block">#define VERSION 0x020101
+// (ver >> 16) & 0xff = 主版本
+// (ver >> 8) & 0xff  = 次版本
+// ver & 0xff         = 修订版本
+// 结果: 2.1.1</pre>
+
+<h4>大小限制宏</h4>
+<table>
+<tr><th>宏</th><th>值</th><th>说明</th></tr>
+<tr><td class="macro">UNLIMITED</td><td>-1</td><td>表示不限制</td></tr>
+<tr><td class="macro">ARGS_MAX_NUMBER</td><td>256</td><td>最大命令行参数</td></tr>
+<tr><td class="macro">ENV_MAX_NUMBER</td><td>256</td><td>最大环境变量</td></tr>
+</table>
+</div>
+
+<h2>🔒 seccomp 沙箱规则</h2>
+
+<div class="file-card">
+<p>Judger 通过 <code>libseccomp</code> 加载白名单 syscall 规则，防止用户代码进行危险系统调用（如 execve 其他程序、网络通信、文件系统遍历等）。</p>
+<table>
+<tr><th>规则名 (seccomp_rule_name)</th><th>说明</th></tr>
+<tr><td><code>general</code></td><td>C/C++ 通用规则（允许 brk, mmap, read, write, exit 等）</td></tr>
+<tr><td><code>c_cpp</code></td><td>C/C++ 专用</td></tr>
+<tr><td><code>java</code></td><td>Java 专用（额外允许一些 JVM 需要的 syscall）</td></tr>
+<tr><td><code>python</code></td><td>Python 专用</td></tr>
+<tr><td>NULL</td><td>不启用 seccomp（信任运行环境）</td></tr>
+</table>
+<div class="tip warning">实际规则定义通常集成在 libjudger.so 编译时，由 distro 维护者根据各语言特性维护。JudgeServer 中运行配置的 seccomp_rule 字段直接传递给 Judger。</div>
+</div>
+
+<h2>⚠️ 注意事项与常见问题</h2>
+
+<div class="file-card">
+<table>
+<tr><th>问题</th><th>说明</th></tr>
+<tr><td>必须 root 运行</td><td>setuid/setgid + seccomp + rlimit 都需要 root 权限</td></tr>
+<tr><td>容器中运行</td><td>Docker 需 <code>--cap-add SYS_ADMIN</code> 或 <code>--privileged</code></td></tr>
+<tr><td>memory_limit_check_only</td><td>容器环境中 setrlimit RLIMIT_AS 不生效，需设为 1 仅事后检查</td></tr>
+<tr><td>max_real_time = 3 × max_cpu_time</td><td>JudgeClient 默认设置，IO 密集型程序需要更多墙钟时间</td></tr>
+<tr><td>stderr 与 output 合并</td><td>run_config 中 stderr 通常重定向到 output 文件</td></tr>
+<tr><td>Linux-only</td><td>依赖 seccomp、cgroup、rusage 等 Linux 特性</td></tr>
+</table>
+</div>
+
+<h2>📎 JudgeServer 调用示例 (Python _judger)</h2>
+
+<div class="file-card">
+<pre class="code-block">import _judger
+
+result = _judger.run(
+    max_cpu_time=1000,
+    max_real_time=3000,
+    max_memory=262144000,
+    max_stack=134217728,          # 128MB
+    max_output_size=167772160,    # 160MB
+    max_process_number=_judger.UNLIMITED,
+    exe_path="/path/to/a.out",
+    input_path="/test_case/1.in",
+    output_path="/submission/1.out",
+    error_path="/submission/1.out",
+    args=[],                       # 额外命令行参数
+    env=["PATH=/usr/bin"],         # 环境变量
+    log_path="/log/judger.log",
+    seccomp_rule_name="general",
+    uid=10000,
+    gid=10000,
+    memory_limit_check_only=0
+)
+
+# result = {
+#   "cpu_time": 10,
+#   "real_time": 15,
+#   "memory": 262144,
+#   "signal": 0,
+#   "exit_code": 0,
+#   "error": 0,
+#   "result": 0        # 0=SUCCESS, 1=TLE, 2=超时, 3=MLE, 4=RE, 5=SE
+# }</pre>
+</div>
+
+</div>
+</body>
+</html>

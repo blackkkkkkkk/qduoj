@@ -1,0 +1,25 @@
+# dependencies / build output
+node_modules/
+dist/
+*.log
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ide
+.idea/
+.vscode/
+*.iml
+
+# os
+.DS_Store
+Thumbs.db
+
+# runtime data (uploads, generated config)
+OnlineJudge/data/log/*
+OnlineJudge/data/public/upload/*
+!OnlineJudge/data/**/.gitkeep

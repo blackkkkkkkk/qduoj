@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OnlineJudgeFE 前端项目接口文档</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #303133; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 28px; color: #1a1a2e; margin-bottom: 10px; border-bottom: 3px solid #67C23A; padding-bottom: 10px; }
+  .subtitle { color: #606266; margin-bottom: 40px; }
+  h2 { font-size: 22px; color: #2c3e50; margin: 40px 0 20px; padding: 10px 15px; background: #f0f9eb; border-left: 4px solid #67C23A; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 18px; color: #34495e; margin: 25px 0 15px; }
+  h4 { font-size: 15px; color: #555; margin: 18px 0 10px; }
+  .file-card { background: #fff; border-radius: 8px; padding: 20px 25px; margin-bottom: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .func-item { padding: 12px 16px; border-left: 3px solid #ebeef5; margin-bottom: 10px; transition: all 0.2s; }
+  .func-item:hover { border-left-color: #67C23A; background: #fafafa; }
+  .func-name { font-family: "Courier New", monospace; color: #67C23A; font-weight: 700; }
+  .func-desc { color: #606266; font-size: 13px; margin-left: 10px; }
+  .func-param { color: #409EFF; }
+  .code-block { background: #2d2d2d; color: #f8f8f2; padding: 12px 15px; border-radius: 6px; font-family: "Courier New", monospace; font-size: 13px; margin: 10px 0; overflow-x: auto; }
+  code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-family: "Courier New", monospace; color: #c7254e; font-size: 13px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 5px; }
+  .tag-public { background: #ecf5ff; color: #409eff; }
+  .tag-admin { background: #fef0f0; color: #f56c6c; }
+  .tag-post { background: #ecf5ff; color: #409eff; }
+  .tag-get { background: #f0f9eb; color: #67c23a; }
+  .tip { background: #f4f4f5; border-left: 4px solid #909399; padding: 12px 15px; margin: 15px 0; border-radius: 0 4px 4px 0; font-size: 13px; color: #606266; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ebeef5; }
+  th { background: #fafafa; font-weight: 600; color: #606266; width: 30%; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .info-item { background: #fff; padding: 15px; border-radius: 6px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .info-item strong { display: block; font-size: 18px; color: #67C23A; }
+  .info-item span { color: #909399; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>💻 OnlineJudgeFE 前端项目接口文档</h1>
+<p class="subtitle">Vue.js + Axios 前端应用 · 基于 api.js 的函数封装 · 自动生成时间: 2026-10-26</p>
+
+<div class="info-grid">
+  <div class="info-item"><strong>60+</strong><span>API 封装函数</span></div>
+  <div class="info-item"><strong>2 个</strong><span>API 入口文件</span></div>
+  <div class="info-item"><strong>2 模块</strong><span>OJ 端 / Admin 端</span></div>
+  <div class="info-item"><strong>/api</strong><span>默认 baseURL</span></div>
+</div>
+
+<h2>📦 项目结构</h2>
+<div class="file-card">
+<pre>OnlineJudgeFE/
+├── src/
+│   ├── pages/
+│   │   ├── oj/api.js      ← OJ 用户端 API 封装（公开接口）
+│   │   ├── admin/api.js   ← 管理员端 API 封装
+│   │   └── ...
+│   ├── store/             ← Vuex 状态管理
+│   └── utils/             ← 工具函数
+├── build/                 ← Webpack 构建
+└── package.json</pre>
+</div>
+
+<h2>🌐 HTTP 基础配置</h2>
+<div class="file-card">
+<h4>全局 Axios 配置</h4>
+<pre class="code-block">axios.defaults.baseURL = '/api'
+axios.defaults.xsrfHeaderName = 'X-CSRFToken'
+axios.defaults.xsrfCookieName = 'csrftoken'</pre>
+
+<h4>统一 ajax 包装器</h4>
+<pre class="code-block">function ajax(url, method, { params = {}, data = {} } = {}) {
+  // 调用 axios
+  // 检查 res.data.error !== null → Vue.prototype.$error(data) + reject
+  //     error 消息以 "Please login" 开头 → 触发登录弹窗/跳转
+  // 否则 resolve
+}</pre>
+
+<div class="tip">所有 API 函数通过 <code>ajax()</code> 包装，后端返回标准结构 <code>{ error, data }</code>。error 非 null 时直接弹窗显示错误信息。</div>
+</div>
+
+<!-- ========== OJ 公共端 API ========== -->
+<h2>🔓 OJ 用户端 API (src/pages/oj/api.js)</h2>
+
+<h3>📋 网站与公告</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getWebsiteConf(params)</span><span class="func-desc">GET <code>/api/website/</code> — 获取网站配置</span></div>
+<div class="func-item"><span class="func-name">getAnnouncementList(offset, limit)</span><span class="func-desc">GET <code>/api/announcement/</code> — 公告列表</span></div>
+</div>
+
+<h3>👤 用户账户</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">login(data)</span><span class="func-desc">POST <code>/api/login/</code> — { username, password, tfa_code? }</span></div>
+<div class="func-item"><span class="func-name">logout()</span><span class="func-desc">GET <code>/api/logout/</code> — 登出</span></div>
+<div class="func-item"><span class="func-name">register(data)</span><span class="func-desc">POST <code>/api/register/</code> — { username, password, email, captcha }</span></div>
+<div class="func-item"><span class="func-name">getCaptcha()</span><span class="func-desc">GET <code>/api/captcha</code> — 获取图形验证码</span></div>
+<div class="func-item"><span class="func-name">checkUsernameOrEmail(username, email)</span><span class="func-desc">POST <code>/api/check_username_or_email</code></span></div>
+<div class="func-item"><span class="func-name">getUserInfo(username?)</span><span class="func-desc">GET <code>/api/profile/</code></span></div>
+<div class="func-item"><span class="func-name">updateProfile(profile)</span><span class="func-desc">PUT <code>/api/profile/</code></span></div>
+<div class="func-item"><span class="func-name">freshDisplayID(userID)</span><span class="func-desc">GET <code>/api/profile/fresh_display_id</code> — 刷新题目显示ID缓存</span></div>
+<div class="func-item"><span class="func-name">twoFactorAuth(method, data)</span><span class="func-desc">方法为 GET/POST/PUT <code>/api/two_factor_auth/</code> — 2FA 全流程</span></div>
+<div class="func-item"><span class="func-name">tfaRequiredCheck(username)</span><span class="func-desc">POST <code>/api/tfa_required</code> — 检查是否需要 2FA</span></div>
+<div class="func-item"><span class="func-name">getSessions()</span><span class="func-desc">GET <code>/api/sessions/</code></span></div>
+<div class="func-item"><span class="func-name">deleteSession(sessionKey)</span><span class="func-desc">DELETE <code>/api/sessions/?session_key=</span></div>
+<div class="func-item"><span class="func-name">applyResetPassword(data)</span><span class="func-desc">POST <code>/api/apply_reset_password/</code></span></div>
+<div class="func-item"><span class="func-name">resetPassword(data)</span><span class="func-desc">POST <code>/api/reset_password/</code></span></div>
+<div class="func-item"><span class="func-name">changePassword(data)</span><span class="func-desc">POST <code>/api/change_password/</code></span></div>
+<div class="func-item"><span class="func-name">changeEmail(data)</span><span class="func-desc">POST <code>/api/change_email/</code></span></div>
+</div>
+
+<h3>🏷️ 题目</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getLanguages()</span><span class="func-desc">GET <code>/api/languages/</code></span></div>
+<div class="func-item"><span class="func-name">getProblemTagList()</span><span class="func-desc">GET <code>/api/problem/tags/</code></span></div>
+<div class="func-item"><span class="func-name">getProblemList(offset, limit, searchParams)</span><span class="func-desc">GET <code>/api/problem/</code> — 支持 tag/keyword/difficulty 筛选</span></div>
+<div class="func-item"><span class="func-name">pickone()</span><span class="func-desc">GET <code>/api/pickone/</code> — 随机推荐一道题</span></div>
+<div class="func-item"><span class="func-name">getProblem(problemID)</span><span class="func-desc">GET <code>/api/problem/?problem_id=</span></span></div>
+</div>
+
+<h3>🏆 比赛</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getContestList(offset, limit, searchParams)</span><span class="func-desc">GET <code>/api/contests/</code></span></div>
+<div class="func-item"><span class="func-name">getContest(id)</span><span class="func-desc">GET <code>/api/contest/?id=</code></span></div>
+<div class="func-item"><span class="func-name">getContestAccess(contestID)</span><span class="func-desc">GET <code>/api/contest/access/</code></span></div>
+<div class="func-item"><span class="func-name">checkContestPassword(contestID, password)</span><span class="func-desc">POST <code>/api/contest/password/</code></span></div>
+<div class="func-item"><span class="func-name">getContestAnnouncementList(contestId)</span><span class="func-desc">GET <code>/api/contest/announcement/</code></span></div>
+<div class="func-item"><span class="func-name">getContestProblemList(contestId)</span><span class="func-desc">GET <code>/api/contest/problem/?contest_id=</code></span></div>
+<div class="func-item"><span class="func-name">getContestProblem(problemID, contestID)</span><span class="func-desc">GET <code>/api/contest/problem/</code></span></div>
+<div class="func-item"><span class="func-name">getContestRank(params)</span><span class="func-desc">GET <code>/api/contest_rank/</code></span></div>
+</div>
+
+<h3>✍️ 提交</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">submitCode(data)</span><span class="func-desc">POST <code>/api/submission/</code> — { problem_id, language, code, contest_id? }</span></div>
+<div class="func-item"><span class="func-name">getSubmissionList(offset, limit, params)</span><span class="func-desc">GET <code>/api/submissions/</code></span></div>
+<div class="func-item"><span class="func-name">getContestSubmissionList(offset, limit, params)</span><span class="func-desc">GET <code>/api/contest_submissions/</code></span></div>
+<div class="func-item"><span class="func-name">getSubmission(id)</span><span class="func-desc">GET <code>/api/submission/?id=</code></span></div>
+<div class="func-item"><span class="func-name">updateSubmission(data)</span><span class="func-desc">PUT <code>/api/submission/</code> — 分享提交</span></div>
+<div class="func-item"><span class="func-name">submissionExists(problemID)</span><span class="func-desc">GET <code>/api/submission_exists/?problem_id=</code></span></div>
+<div class="func-item"><span class="func-name">submissionRejudge(id)</span><span class="func-desc">GET <code>/api/admin/submission/rejudge?id=</code> — 重判（管理员）</span></div>
+</div>
+
+<h3>📊 排行榜</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getUserRank(offset, limit, rule)</span><span class="func-desc">GET <code>/api/user_rank/</code> — rule 默认 "acm"</span></div>
+</div>
+
+<h3>🏅 ACM 比赛管理辅助</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getACMACInfo(params)</span><span class="func-desc">GET <code>/api/admin/contest/acm_helper/</code> — 获取所有 AC 信息</span></div>
+<div class="func-item"><span class="func-name">updateACInfoCheckedStatus(data)</span><span class="func-desc">PUT <code>/api/admin/contest/acm_helper/</code> — 标记 checked</span></div>
+</div>
+
+<!-- ========== Admin 管理端 API ========== -->
+<h2>🔒 Admin 管理员端 API (src/pages/admin/api.js)</h2>
+
+<h3>🔐 登录与会话</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">login(username, password)</span><span class="func-desc">POST <code>/api/login/</code></span></div>
+<div class="func-item"><span class="func-name">logout()</span><span class="func-desc">GET <code>/api/logout/</code></span></div>
+<div class="func-item"><span class="func-name">getProfile()</span><span class="func-desc">GET <code>/api/profile/</code></span></div>
+<div class="func-item"><span class="func-name">getSessions()</span><span class="func-desc">GET <code>/api/sessions/</code></span></div>
+</div>
+
+<h3>📢 公告管理</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getAnnouncementList(offset, limit)</span><span class="func-desc">GET <code>/api/admin/announcement/</code></span></div>
+<div class="func-item"><span class="func-name">createAnnouncement(data)</span><span class="func-desc">POST <code>/api/admin/announcement/</code></span></div>
+<div class="func-item"><span class="func-name">updateAnnouncement(data)</span><span class="func-desc">PUT <code>/api/admin/announcement/</code></span></div>
+<div class="func-item"><span class="func-name">deleteAnnouncement(id)</span><span class="func-desc">DELETE <code>/api/admin/announcement/?id=</code></span></div>
+</div>
+
+<h3>👥 用户管理</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getUserList(offset, limit, keyword?)</span><span class="func-desc">GET <code>/api/admin/user/</code></span></div>
+<div class="func-item"><span class="func-name">getUser(id)</span><span class="func-desc">GET <code>/api/admin/user/?id=</code></span></div>
+<div class="func-item"><span class="func-name">editUser(data)</span><span class="func-desc">PUT <code>/api/admin/user/</code></span></div>
+<div class="func-item"><span class="func-name">deleteUsers(id)</span><span class="func-desc">DELETE <code>/api/admin/user/?id=</code></span></div>
+<div class="func-item"><span class="func-name">importUsers(users)</span><span class="func-desc">POST <code>/api/admin/user/</code> — 批量导入</span></div>
+<div class="func-item"><span class="func-name">generateUser(data)</span><span class="func-desc">POST <code>/api/admin/generate_user/</span> — 批量生成账号</span></div>
+</div>
+
+<h3>✉️ SMTP 邮件配置</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getSMTPConfig()</span><span class="func-desc">GET <code>/api/admin/smtp/</code></span></div>
+<div class="func-item"><span class="func-name">createSMTPConfig(data)</span><span class="func-desc">POST <code>/api/admin/smtp/</code></span></div>
+<div class="func-item"><span class="func-name">editSMTPConfig(data)</span><span class="func-desc">PUT <code>/api/admin/smtp/</code></span></div>
+<div class="func-item"><span class="func-name">testSMTPConfig(email)</span><span class="func-desc">POST <code>/api/admin/smtp_test/</code></span></div>
+</div>
+
+<h3>🌐 网站配置</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getWebsiteConfig()</span><span class="func-desc">GET <code>/api/admin/website/</code></span></div>
+<div class="func-item"><span class="func-name">editWebsiteConfig(data)</span><span class="func-desc">POST <code>/api/admin/website/</code></span></div>
+</div>
+
+<h3>🖥️ 判题服务器管理</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getJudgeServer()</span><span class="func-desc">GET <code>/api/admin/judge_server/</code> — 含 token</span></div>
+<div class="func-item"><span class="func-name">deleteJudgeServer(hostname)</span><span class="func-desc">DELETE <code>/api/admin/judge_server/?hostname=</code></span></div>
+<div class="func-item"><span class="func-name">updateJudgeServer(data)</span><span class="func-desc">PUT <code>/api/admin/judge_server/</code> — 启用/禁用</span></div>
+</div>
+
+<h3>🗑️ 测试用例清理</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getInvalidTestCaseList()</span><span class="func-desc">GET <code>/api/admin/prune_test_case/</code> — 孤儿测试用例</span></div>
+<div class="func-item"><span class="func-name">pruneTestCase(id)</span><span class="func-desc">DELETE <code>/api/admin/prune_test_case/?id=</code></span></div>
+</div>
+
+<h3>🏆 比赛管理</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">createContest(data)</span><span class="func-desc">POST <code>/api/admin/contest/</code></span></div>
+<div class="func-item"><span class="func-name">getContest(id)</span><span class="func-desc">GET <code>/api/admin/contest/?id=</code></span></div>
+<div class="func-item"><span class="func-name">editContest(data)</span><span class="func-desc">PUT <code>/api/admin/contest/</code></span></div>
+<div class="func-item"><span class="func-name">getContestList(offset, limit, keyword?)</span><span class="func-desc">GET <code>/api/admin/contest/</code></span></div>
+<div class="func-item"><span class="func-name">getContestAnnouncementList(contestID)</span><span class="func-desc">GET <code>/api/admin/contest/announcement/?contest_id=</code></span></div>
+<div class="func-item"><span class="func-name">createContestAnnouncement(data)</span><span class="func-desc">POST <code>/api/admin/contest/announcement/</code></span></div>
+<div class="func-item"><span class="func-name">updateContestAnnouncement(data)</span><span class="func-desc">PUT <code>/api/admin/contest/announcement/</code></span></div>
+<div class="func-item"><span class="func-name">deleteContestAnnouncement(id)</span><span class="func-desc">DELETE <code>/api/admin/contest/announcement/?id=</code></span></div>
+</div>
+
+<h3>📝 题目管理</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getProblemTagList(params?)</span><span class="func-desc">GET <code>/api/problem/tags/</code></span></div>
+<div class="func-item"><span class="func-name">compileSPJ(data)</span><span class="func-desc">POST <code>/api/admin/compile_spj/</code> — 编译 Special Judge</span></div>
+<div class="func-item"><span class="func-name">createProblem(data)</span><span class="func-desc">POST <code>/api/admin/problem/</code></span></div>
+<div class="func-item"><span class="func-name">editProblem(data)</span><span class="func-desc">PUT <code>/api/admin/problem/</code></span></div>
+<div class="func-item"><span class="func-name">deleteProblem(id)</span><span class="func-desc">DELETE <code>/api/admin/problem/?id=</code></span></div>
+<div class="func-item"><span class="func-name">getProblem(id)</span><span class="func-desc">GET <code>/api/admin/problem/?id=</code></span></div>
+<div class="func-item"><span class="func-name">getProblemList(params)</span><span class="func-desc">GET <code>/api/admin/problem/</code></span></div>
+<div class="func-item"><span class="func-name">getContestProblemList(params)</span><span class="func-desc">GET <code>/api/admin/contest/problem/</code></span></div>
+<div class="func-item"><span class="func-name">getContestProblem(id)</span><span class="func-desc">GET <code>/api/admin/contest/problem/?id=</code></span></div>
+<div class="func-item"><span class="func-name">createContestProblem(data)</span><span class="func-desc">POST <code>/api/admin/contest/problem/</code></span></div>
+<div class="func-item"><span class="func-name">editContestProblem(data)</span><span class="func-desc">PUT <code>/api/admin/contest/problem/</code></span></div>
+<div class="func-item"><span class="func-name">deleteContestProblem(id)</span><span class="func-desc">DELETE <code>/api/admin/contest/problem/?id=</code></span></div>
+<div class="func-item"><span class="func-name">makeContestProblemPublic(data)</span><span class="func-desc">POST <code>/api/admin/contest_problem/make_public/</code> — 比赛题公开化</span></div>
+<div class="func-item"><span class="func-name">addProblemFromPublic(data)</span><span class="func-desc">POST <code>/api/admin/contest/add_problem_from_public/</code> — 公题加入比赛</span></div>
+<div class="func-item"><span class="func-name">exportProblems(data)</span><span class="func-desc">POST <code>/api/export_problem/</code> — 导出题目 zip</span></div>
+</div>
+
+<h3>📈 版本与仪表盘</h3>
+<div class="file-card">
+<div class="func-item"><span class="func-name">getReleaseNotes()</span><span class="func-desc">GET <code>/api/admin/versions/</code> — GitHub Release Notes</span></div>
+<div class="func-item"><span class="func-name">getDashboardInfo()</span><span class="func-desc">GET <code>/api/admin/dashboard_info</code> — 仪表盘统计</span></div>
+</div>
+
+<h2>⚠️ 前端特有的错误处理</h2>
+<div class="file-card">
+<table>
+<tr><th>场景</th><th>行为</th></tr>
+<tr><td>后端返回 <code>error !== null</code></td><td><code>Vue.prototype.$error(data)</code> 弹窗 + Promise reject</td></tr>
+<tr><td>错误消息以 <code>Please login</code> 开头</td><td>OJ 端触发登录弹窗；Admin 端 <code>router.push('login')</code></td></tr>
+<tr><td>网络/Server 异常</td><td><code>Vue.prototype.$error(res.data.data)</code> + Promise reject</td></tr>
+</table>
+</div>
+
+</div>
+</body>
+</html>

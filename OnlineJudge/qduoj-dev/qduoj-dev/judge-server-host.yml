@@ -1,0 +1,30 @@
+version: "3"
+# 备用: 如果你不想用端口映射, 用 host 网络模式的判题机
+#   docker compose -f judge-server-host.yml -p judge-server up -d
+# 注意: host 模式下容器直接占用 WSL2 的 8080, 会与前端 dev server 冲突,
+#       所以前端要改成 8081 (config/index.js 的 port)
+services:
+  judge-server:
+    image: registry.cn-hangzhou.aliyuncs.com/onlinejudge/judge_server
+    container_name: judge-server
+    restart: always
+    read_only: true
+    cap_drop:
+      - SETPCAP
+      - MKNOD
+      - NET_BIND_SERVICE
+      - SYS_CHROOT
+      - SETFCAP
+      - FSETID
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./data/test_case:/test_case:ro
+      - ./data_dev/judge_server/log:/log
+      - ./data_dev/judge_server/run:/judger
+    environment:
+      - SERVICE_URL=http://127.0.0.1:8080
+      - BACKEND_URL=http://127.0.0.1:8000/api/judge_server_heartbeat/
+      - TOKEN=CHANGE_THIS
+      - judger_debug=1
+    network_mode: "host"

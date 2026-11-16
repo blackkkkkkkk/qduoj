@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JudgeServer 判题服务接口文档</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; color: #303133; line-height: 1.6; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 28px; color: #1a1a2e; margin-bottom: 10px; border-bottom: 3px solid #E6A23C; padding-bottom: 10px; }
+  .subtitle { color: #606266; margin-bottom: 40px; }
+  h2 { font-size: 22px; color: #2c3e50; margin: 40px 0 20px; padding: 10px 15px; background: #fdf6ec; border-left: 4px solid #E6A23C; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 18px; color: #34495e; margin: 25px 0 15px; }
+  h4 { font-size: 15px; color: #555; margin: 18px 0 10px; }
+  .file-card { background: #fff; border-radius: 8px; padding: 20px 25px; margin-bottom: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .endpoint { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 20px; overflow: hidden; }
+  .endpoint-header { padding: 15px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #ebeef5; }
+  .method { display: inline-block; padding: 4px 12px; border-radius: 4px; color: #fff; font-weight: 700; font-size: 12px; min-width: 60px; text-align: center; }
+  .method.post { background: #409eff; }
+  .method.any { background: #909399; }
+  .path { font-family: "Courier New", monospace; font-size: 14px; color: #303133; flex: 1; }
+  .desc { font-size: 13px; color: #909399; }
+  .endpoint-body { padding: 20px; }
+  .code-block { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 6px; font-family: "Courier New", monospace; font-size: 13px; margin: 10px 0; overflow-x: auto; }
+  code { background: #f0f2f5; padding: 2px 6px; border-radius: 3px; font-family: "Courier New", monospace; color: #c7254e; font-size: 13px; }
+  .tip { background: #f4f4f5; border-left: 4px solid #909399; padding: 12px 15px; margin: 15px 0; border-radius: 0 4px 4px 0; font-size: 13px; color: #606266; }
+  .tip.info { background: #ecf5ff; border-color: #409eff; color: #409eff; }
+  .tip.warning { background: #fdf6ec; border-color: #e6a23c; color: #e6a23c; }
+  .tip.error { background: #fef0f0; border-color: #f56c6c; color: #f56c6c; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ebeef5; }
+  th { background: #fafafa; font-weight: 600; color: #606266; width: 28%; }
+  .file-tree { font-family: "Courier New", monospace; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .info-item { background: #fff; padding: 15px; border-radius: 6px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .info-item strong { display: block; font-size: 18px; color: #E6A23C; }
+  .info-item span { color: #909399; font-size: 13px; }
+  .enum-table td:first-child { font-family: "Courier New", monospace; color: #c7254e; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>⚡ JudgeServer 判题服务接口文档</h1>
+<p class="subtitle">Flask 轻量 HTTP 服务 · 与 JudgeServer 后端通信 · 自动生成时间: 2026-10-26</p>
+
+<div class="info-grid">
+  <div class="info-item"><strong>Flask</strong><span>HTTP 框架</span></div>
+  <div class="info-item"><strong>3 个</strong><span>主要路由</span></div>
+  <div class="info-item"><strong>1 个</strong><span>外部库调用</span></div>
+  <div class="info-item"><strong>_judger</strong><span>C 扩展模块</span></div>
+</div>
+
+<h2>📦 项目结构</h2>
+<div class="file-card">
+<pre class="file-tree">JudgeServer/
+├── server/
+│   ├── server.py          ← Flask HTTP 接口主入口 (路由 + JudgeServer 类)
+│   ├── service.py         ← 心跳服务 (JudgeService)
+│   ├── judge_client.py    ← 判题客户端 (JudgeClient → 调用 _judger.run)
+│   ├── compiler.py        ← Compiler 类 (编译源码)
+│   ├── config.py          ← 常量配置 (UID/GID/路径)
+│   ├── exception.py       ← 自定义异常
+│   ├── utils.py           ← server_info(), token, ProblemIOMode
+│   └── unbuffer.c         ← C 辅助工具
+├── client/                ← 客户端（内部使用）
+└── tests/                 ← 测试</pre>
+</div>
+
+<h2>🔐 认证机制</h2>
+<div class="file-card">
+<p>所有 HTTP 请求需携带 Header: <code>X-Judge-Server-Token</code></p>
+<pre class="code-block"># server/utils.py
+def get_token():
+    token = os.environ.get("TOKEN")  # 后端主站设置的密钥
+    return token
+
+token = hashlib.sha256(get_token().encode("utf-8")).hexdigest()
+
+# server.py 路由中校验
+if _token != token:
+    raise TokenVerificationFailed("invalid token")</pre>
+<div class="tip error">Token 是环境变量 TOKEN 的 SHA256 哈希，后端主站存储明文 TOKEN，JudgeServer 也存明文但比较哈希。若失败返回 HTTP 200 + JSON 错误。</div>
+</div>
+
+<h2>📂 文件系统权限模型</h2>
+<div class="file-card">
+<table>
+<tr><th>用户</th><th>用途</th><th>涉及路径</th></tr>
+<tr><td><code>compiler</code></td><td>编译用户代码</td><td>submission_dir, spj 源码</td></tr>
+<tr><td><code>code</code> (run)</td><td>运行用户程序</td><td>submission_dir/exe</td></tr>
+<tr><td><code>spj</code></td><td>运行 Special Judge</td><td>SPJ_EXE_DIR</td></tr>
+</table>
+<p>工作目录: <code>/judger/run/</code>，测试用例目录: <code>/test_case/</code></p>
+</div>
+
+<!-- ========== HTTP 接口 ========== -->
+<h2>🌐 HTTP 接口 (统一 POST 路由分发)</h2>
+
+<div class="file-card">
+<p>Flask 使用 catch-all 路由：<code>@app.route('/&lt;path:path&gt;', methods=["POST"])</code>，根据 path 值分发到三个处理器。</p>
+<pre class="code-block">@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>', methods=["POST"])
+def server(path):
+    if path in ("judge", "ping", "compile_spj"):
+        # Token 校验 → request.json 作为 kwargs → getattr(JudgeServer, path)(**data)</pre>
+
+<h4>统一响应格式</h4>
+<pre class="code-block">{
+    "err": null,           // 成功时 null；失败时为异常类名如 "CompileError"
+    "data": {...}          // 业务数据
+}
+
+// 错误类型
+TokenVerificationFailed  → Token 错误
+CompileError             → 编译错误
+SPJCompileError          → SPJ 编译错误
+JudgeClientError         → 判题客户端通用错误
+InvalidRequest           → 路径不在 ["judge", "ping", "compile_spj"]</pre>
+</div>
+
+<!-- ========== Ping ========== -->
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/ping</span><span class="desc">存活探测 + 服务器信息</span></div>
+<div class="endpoint-body">
+<h4>请求体</h4>
+<p>无特殊要求（可为空）。</p>
+
+<h4>成功响应</h4>
+<pre class="code-block">{
+    "err": null,
+    "data": {
+        "action": "pong",
+        "hostname": "judge-server-01",
+        "cpu": 15.5,
+        "cpu_core": 8,
+        "memory": 45.0,
+        "judger_version": "2.1.1"
+    }
+}</pre>
+<table>
+<tr><th>字段</th><th>类型</th><th>说明</th></tr>
+<tr><td>action</td><td>string</td><td>固定值 "pong"</td></tr>
+<tr><td>hostname</td><td>string</td><td>主机名</td></tr>
+<tr><td>cpu</td><td>float</td><td>当前 CPU 使用率 %</td></tr>
+<tr><td>cpu_core</td><td>int</td><td>CPU 核心数</td></tr>
+<tr><td>memory</td><td>float</td><td>内存使用率 %</td></tr>
+<tr><td>judger_version</td><td>string</td><td>Judger C 库版本 (x.y.z)</td></tr>
+</table>
+</div>
+</div>
+
+<!-- ========== Judge ========== -->
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/judge</span><span class="desc">执行判题核心逻辑</span></div>
+<div class="endpoint-body">
+<h4>请求体</h4>
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>language_config</td><td>object</td><td class="required">是</td><td>语言配置，含 compile/run 两部分</td></tr>
+<tr><td>language_config.compile</td><td>object</td><td>否</td><td>编译配置（解释型语言无此）</td></tr>
+<tr><td>language_config.compile.cmd</td><td>string</td><td></td><td>编译命令模板</td></tr>
+<tr><td>language_config.compile.src_name</td><td>string</td><td></td><td>源码文件名</td></tr>
+<tr><td>language_config.run</td><td>object</td><td class="required">是</td><td>运行配置</td></tr>
+<tr><td>language_config.run.command</td><td>string</td><td></td><td>运行命令模板，占位符: <code>{exe_path}</code> <code>{exe_dir}</code> <code>{max_memory}</code></td></tr>
+<tr><td>language_config.run.seccomp_rule</td><td>string/object</td><td></td><td>seccomp 规则名</td></tr>
+<tr><td>src</td><td>string</td><td class="required">是</td><td>用户源代码</td></tr>
+<tr><td>max_cpu_time</td><td>int</td><td class="required">是</td><td>最大 CPU 时间 (ms)</td></tr>
+<tr><td>max_memory</td><td>int</td><td class="required">是</td><td>最大内存 (byte)</td></tr>
+<tr><td>test_case_id</td><td>string</td><td colspan="2" rowspan="2">二选一。test_case_id 从磁盘加载；test_case 直接传数据</td></tr>
+<tr><td>test_case</td><td>array</td></tr>
+<tr><td>spj_version</td><td>string</td><td>否</td><td>SPJ 版本号（开启 SPJ 时）</td></tr>
+<tr><td>spj_config</td><td>object</td><td>否</td><td>SPJ 运行配置</td></tr>
+<tr><td>spj_compile_config</td><td>object</td><td>否</td><td>SPJ 编译配置</td></tr>
+<tr><td>spj_src</td><td>string</td><td>否</td><td>SPJ 源码</td></tr>
+<tr><td>output</td><td>bool</td><td>否</td><td>是否在结果中包含用户输出（调试用）</td></tr>
+<tr><td>io_mode</td><td>object</td><td>否</td><td>IO 模式 {"io_mode": "Standard IO"} 或 {"io_mode": "File IO", "input": "input.txt", "output": "output.txt"}</td></tr>
+</table>
+
+<h4>test_case 内联数据格式</h4>
+<pre class="code-block">[
+    {"input": "1 2\n", "output": "3\n"},
+    {"input": "3 5\n", "output": "8\n"}
+]</pre>
+
+<h4>成功响应</h4>
+<pre class="code-block">{
+    "err": null,
+    "data": [
+        {
+            "test_case": "1",
+            "cpu_time": 10,
+            "real_time": 15,
+            "memory": 262144,
+            "signal": 0,
+            "exit_code": 0,
+            "error": 0,
+            "result": 0,
+            "output_md5": "abc123...",
+            "output": null
+        },
+        ...
+    ]
+}</pre>
+
+<h4>result 字段结果枚举（_judger）</h4>
+<table class="enum-table">
+<tr><th>值</th><th>常量</th><th>含义</th></tr>
+<tr><td>0</td><td>RESULT_SUCCESS</td><td>AC - Accepted</td></tr>
+<tr><td>-1</td><td>RESULT_WRONG_ANSWER</td><td>WA - Wrong Answer</td></tr>
+<tr><td>1</td><td>RESULT_CPU_TIME_LIMIT_EXCEEDED</td><td>TLE - CPU 超时</td></tr>
+<tr><td>2</td><td>RESULT_REAL_TIME_LIMIT_EXCEEDED</td><td>超时（墙钟时间）</td></tr>
+<tr><td>3</td><td>RESULT_MEMORY_LIMIT_EXCEEDED</td><td>MLE - 内存超限</td></tr>
+<tr><td>4</td><td>RESULT_RUNTIME_ERROR</td><td>RE - 运行时错误</td></tr>
+<tr><td>5</td><td>RESULT_SYSTEM_ERROR</td><td>SE - 系统错误</td></tr>
+</table>
+
+<h4>error 字段枚举（错误码）</h4>
+<table class="enum-table">
+<tr><th>值</th><th>常量</th><th>含义</th></tr>
+<tr><td>0</td><td>SUCCESS</td><td>正常</td></tr>
+<tr><td>-1</td><td>INVALID_CONFIG</td><td>配置无效</td></tr>
+<tr><td>-2</td><td>FORK_FAILED</td><td>fork() 失败</td></tr>
+<tr><td>-3</td><td>PTHREAD_FAILED</td><td>pthread 创建失败</td></tr>
+<tr><td>-4</td><td>WAIT_FAILED</td><td>waitpid 失败</td></tr>
+<tr><td>-5</td><td>ROOT_REQUIRED</td><td>需要 root 权限</td></tr>
+<tr><td>-6</td><td>LOAD_SECCOMP_FAILED</td><td>seccomp 加载失败</td></tr>
+<tr><td>-7</td><td>SETRLIMIT_FAILED</td><td>setrlimit 失败</td></tr>
+<tr><td>-8</td><td>DUP2_FAILED</td><td>文件描述符重定向失败</td></tr>
+<tr><td>-9</td><td>SETUID_FAILED</td><td>UID/GID 切换失败</td></tr>
+<tr><td>-10</td><td>EXECVE_FAILED</td><td>execve 执行失败</td></tr>
+<tr><td>-11</td><td>SPJ_ERROR</td><td>Special Judge 错误</td></tr>
+</table>
+
+<div class="tip warning">JudgeServer 会在判题前清理工作目录（非 DEBUG 模式下）。测试用例数据会被 MD5 校验，WA 判断使用 output_md5 比较。</div>
+</div>
+</div>
+
+<!-- ========== Compile SPJ ========== -->
+<div class="endpoint">
+<div class="endpoint-header"><span class="method post">POST</span><span class="path">/compile_spj</span><span class="desc">编译 Special Judge 源码</span></div>
+<div class="endpoint-body">
+<h4>请求体</h4>
+<table>
+<tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+<tr><td>spj_version</td><td>string</td><td class="required">是</td><td>SPJ 版本标识</td></tr>
+<tr><td>spj_src</td><td>string</td><td class="required">是</td><td>SPJ 源代码</td></tr>
+<tr><td>spj_compile_config</td><td>object</td><td class="required">是</td><td>编译配置（含 cmd, src_name, exe_name 等）</td></tr>
+</table>
+
+<h4>成功响应</h4>
+<pre class="code-block">{ "err": null, "data": "success" }</pre>
+
+<h4>失败响应</h4>
+<pre class="code-block">{ "err": "SPJCompileError", "data": "<编译错误信息>" }</pre>
+</div>
+</div>
+
+<h2>💓 心跳服务 (service.py)</h2>
+
+<div class="file-card">
+<p>独立脚本，通过环境变量调用，用于向 Django 后端上报心跳。不暴露 HTTP 端口。</p>
+<h4>环境变量</h4>
+<table>
+<tr><th>变量</th><th>说明</th></tr>
+<tr><td>TOKEN</td><td>与后端一致的密钥</td></tr>
+<tr><td>SERVICE_URL</td><td>本 JudgeServer 的判题服务地址 (如 http://localhost:8080)</td></tr>
+<tr><td>BACKEND_URL</td><td>Django 后端心跳接口 (如 http://oj-backend/api/judge_server_heartbeat/)</td></tr>
+<tr><td>DISABLE_HEARTBEAT</td><td>设置为非空则跳过心跳（容器本地测试用）</td></tr>
+</table>
+
+<h4>心跳请求 payload</h4>
+<pre class="code-block">{
+    "action": "heartbeat",
+    "hostname": "...",
+    "cpu": 15.5,
+    "cpu_core": 8,
+    "memory": 45.0,
+    "judger_version": "2.1.1",
+    "service_url": "http://judge-server:8080"
+}</pre>
+<p>Header: <code>X-JUDGE-SERVER-TOKEN: &lt;sha256-hash&gt;</code></p>
+</div>
+
+<h2>🔧 JudgeClient 内部逻辑 (judge_client.py)</h2>
+
+<div class="file-card">
+<p>这是 /judge 接口的核心内部实现，通过多进程并行调用 <code>_judger.run()</code> 执行每个测试用例。</p>
+
+<h4>关键流程</h4>
+<pre class="code-block">JudgeClient.run():
+    for 每个测试用例:
+        → subprocess/multiprocessing 调用 _judger.run()
+        → 获取 run_result
+        → 若 result == SUCCESS:
+            → 判断 spj 还是普通对比
+            → 普通对比: md5(rstrip(output)) == info["stripped_output_md5"]
+            → spj: 运行 spj 二进制，根据 exit_code 判 AC/WA/SE
+        → result != SUCCESS: 直接返回</pre>
+
+<h4>SPJ 常量</h4>
+<pre class="code-block">SPJ_WA = 1    # exit_code=1 → WA
+SPJ_AC = 0    # exit_code=0 → AC
+SPJ_ERROR = -1</pre>
+
+<h4>多进程执行</h4>
+<p>使用 <code>multiprocessing.Pool(processes=psutil.cpu_count())</code> 并行执行所有测试用例。</p>
+</div>
+
+<h2>🛠️ 环境部署要点</h2>
+
+<div class="file-card">
+<table>
+<tr><th>要求</th><th>说明</th></tr>
+<tr><td>Linux 环境</td><td>_judger 依赖 Linux 内核 (seccomp, cgroup)</td></tr>
+<tr><td>多用户隔离</td><td>必须存在 compiler/code/spj 三个系统用户</td></tr>
+<tr><td>文件权限</td><td>工作目录 711，源码 400，可执行 500</td></tr>
+<tr><td>Token 配置</td><td>环境变量 TOKEN 必须与 Django 后端一致</td></tr>
+<tr><td>Gunicorn 启动</td><td><code>gunicorn -w 4 -b 0.0.0.0:8080 server:app</code></td></tr>
+</table>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+version: "3"
+# ==========================================================
+#  PostgreSQL + Redis  (二次开发用的数据库, 放 OnlineJudge 目录下)
+#  端口特意避开 Win11 本机可能已占用的 5432 / 6379
+# ==========================================================
+services:
+  oj-redis:
+    image: redis:6-alpine
+    container_name: oj-redis
+    restart: always
+    volumes:
+      - ./data_dev/redis:/data
+    ports:
+      - "0.0.0.0:6380:6379"
+
+  oj-postgres:
+    image: postgres:13-alpine
+    container_name: oj-postgres
+    restart: always
+    volumes:
+      - ./data_dev/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=onlinejudge
+      - POSTGRES_USER=onlinejudge
+      - POSTGRES_PASSWORD=onlinejudge
+    ports:
+      - "0.0.0.0:5435:5432"
